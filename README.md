@@ -4,7 +4,7 @@ PingMan
 
 ---------
 
-####DESCRIPTION
+######DESCRIPTION
 
 
 Network managers tried to seek a perfect network tool to understand the performance and the status of the nodes/routers/switches/firewalls, however, many tools on the market are not perfect. Some tiny ping tools can provide packet loss rate and response, but they can not applied to be deployed to multiple locations and running long term; Some SAAS vendors offer great application to monitor nodes but there is no simple solution to deal with internal routers and servers.  Many heavy node manager software are being packaged too many features and difficult to deploy. Some smart users adopt splunk with scripts and searches, but it is difficult to build a fully functional application to monitor the real infrastructure.
