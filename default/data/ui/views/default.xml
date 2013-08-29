@@ -1,0 +1,1 @@
+<view template="pingman:/templates/redirect.tmpl" isVisible="false"><label>Monitor List</label></view>

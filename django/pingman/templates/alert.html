@@ -1,0 +1,89 @@
+
+{% if  isweb %}
+{% load splunkmvc %}
+{% endif %}
+{% block css %}
+
+<meta name="viewport"content="target-densitydpi=device-dpi, width=device-width,  initial-scale=0.5" />
+       
+{% endblock css %}
+{% block content %}
+    
+        <div id="container" style="max-width:800px;margin:0 auto;">
+ 
+           
+            <table border="0" cellspacing="0" cellpadding="1" 
+                style='{% if isweb %}width:100%;margin:0 auto;{% else %}width:600px;border:1px solid #ddd;{% endif %}font-family: "Helvetica Neue", "Luxi Sans", "DejaVu Sans", Tahoma, "Hiragino Sans GB", STHeiti, "Microsoft YaHei", Arial, sans-serif;box-shadow:0 0 20px #777;' >
+                <tr>
+                    <td {% if not isok %} bgcolor="d4350e" {% else %} bgcolor="#319400" {% endif %}
+                        style="padding-left:20px;color:#ffffff;font-weight:bold;font-size:24px;" height=60>
+                        PingMan Alert
+                    </td>
+                </tr>
+                <tr>
+                    <td bgcolor="ffffff" style="padding:20px;" >
+                        <table border="0">
+                            <tr>
+                                <td>
+                                    {% if not isok %}
+                                    <img alt="Cannot reach" src="{{STATIC_URL}}{{app_name}}/down.png" /> 
+                                    {% else %}
+                                    <img alt="Can access" src="{{STATIC_URL}}{{app_name}}/ok.png"/>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <p style="font-weight: bold;font-size:20px;margin:10px;padding:0;"> Host: {{host}}</p>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+                <tr>
+                    <td colspan="2" style="padding:0;background-color:#fff;">
+                        <table border="0" cellspacing="0" cellpadding="1">
+                            <tr>
+                                <td  {% if not isok %} bgcolor="d4350e" {% else %} bgcolor="319400" {% endif %} width="15" style="padding:0;"></td>
+                                <td style="color: {% if not isok %}#d4350e{% else %}#319400{% endif %};padding:10px; font-weight: bold;font-size:18px;">Event:</td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+                <tr>
+                    <td bgcolor="ffffff" style="font-size:16px;padding-left:30px;padding-top:10px;padding-bottom:15px;" >
+                        <table width="90%" border="0" cellspacing="0" cellpadding="0">
+                            <tr>
+                                <td width="30" height="30" align="center" valign="top"><img src="{{STATIC_URL}}{{app_name}}/icon_clock_red.png" /></td>
+                                <td width="120" height="30" align="center" valign="top">Happened at：</td>
+                                <td height="30" align="left" valign="top">{{related}}</td>
+                            </tr>
+                            {% if isok %}
+                            <tr>
+                                <td width="30" height="30" align="center" valign="top"><img src="{{STATIC_URL}}{{app_name}}/icon_clock_green.png" /></td>
+                                <td width="120" height="30" align="center" valign="top">Recovered at：</td>
+                                <td height="30" align="left" valign="top">{{time}}</td>
+                            </tr>   
+                            <tr>
+                                <td width="30" height="30" align="center" valign="top"><img src="{{STATIC_URL}}{{app_name}}/icon_clock.png" /></td>
+                                <td width="120" height="30" align="center" valign="top">Down period：</td>
+                                <td height="30" align="left" valign="top">{{period}}</td>
+                            </tr>   
+                            {% endif %}
+                            <tr>
+                                <td width="30" height="30" align="center" valign="top"><img src="{{STATIC_URL}}{{app_name}}/icon_reason.png" /></td>
+                                <td width="120" height="30" align="center" valign="top">Description：</td>
+                                <td align="left" valign="top">{{desc}}</td>
+                            </tr>   
+
+
+                        </table>
+                    </td>
+                </tr>
+                
+                
+                <tr>
+                    <td colspan="2" style="padding:0;background-color:#fff;text-align:right;padding:20px;font-size:16px;">   </td>
+                </tr>
+            </table>
+        </div>
+        </div>
+{% endblock content %}

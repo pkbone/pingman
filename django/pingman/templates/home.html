@@ -1,0 +1,348 @@
+{% extends "splunkdj:base_with_app_bar.html" %}
+
+{% load splunkmvc %}
+
+{% block title %}{{app_name}} Home Page{% endblock title %}
+
+{% block css %}
+    <link rel="stylesheet" type="text/css" href="{{STATIC_URL}}splunkjs/css/dashboard.css" />
+   
+    <link rel="stylesheet" type="text/css" media="all" href="{{STATIC_URL}}/css/pages/dashboard-simple-bootstrap.min.css" />
+  
+    <meta name="viewport"content="target-densitydpi=device-dpi, width=device-width,  initial-scale=0.5" />
+       
+    <link rel="stylesheet" type="text/css" href="{{STATIC_URL}}{{app_name}}/custom.css" />
+    
+    <style>        
+        .container {
+            margin: 0px auto;
+            margin-top: 30px;
+            margin-bottom: 30px;
+            padding: 10px;
+            max-width: 1024px;
+            box-shadow:0 0 20px #777;
+        }    
+         .app-bar .nav-pills {
+            background-color:#56A7E7;
+            border-bottom: 0px;
+        }
+     
+    </style>
+{% endblock css %}
+
+{% block content %}
+<div class="container" >
+<div class="dashboard-body container-fluid main-section-body" data-role="main">
+    <div class="row">
+        <div class="span9 dashboard-header clearfix">
+            <h2>Hosts Status Monitor </h2>
+
+        </div>
+        <div class="span3 dashboard-header clearfix"  style="float:right;"><a class="btn btn-large btn-primary"  href="/en-US/manager/pingman/data/inputs/pingman">
+    Add New Monitor
+  </a></div>
+
+    </div>
+
+
+    <div class="dashboard-row">
+        <div class="dashboard-cell" style="width: 100%;">
+            <div class="dashboard-panel">
+                <div class="dashboard-element">
+                    <div class="panel-head">
+                        <h3>Monitor Status List (in last 15 mins)</h3>
+                    </div>
+                    <div class="panel-body">
+                        {% resulttable id="table1" managerid="simplesearch1" %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    
+</div>
+
+
+</div>
+
+{% endblock content%}
+{% block managers %}
+
+
+    {% searchmanager id="simplesearch1" earliest_time="-16m@m" latest_time="-1m@m" search="| rest /servicesNS/admin/pingman/configs/inputs | search index=pingman title=pingman:* disabled=0| dedup title | fields title hostname  | join type=outer title [ search index=pingman   | stats avg(time) as response sum(eval(if(eventtype==\"pingloss\",1,0))) as loss sum(eval(if(eventtype==\"pingsuccess\",1,0))) as success first(eventtype) as laststatus  by source | eval response=round(response, 0) | eval response = response + \"ms\" | eval lossrate = round(loss/(success+loss) * 100, 0) | rangemap field=lossrate green=0-1 default=red| eval lossrate = lossrate + \"%\"| rename source as title]| join type=outer title [search index=pingman   eventtype=\"pingloss\" | stats first(_time) as lastloss last(_time) as last by source | join source type=outer [ search index=pingman eventtype=\"pingsuccess\" |  stats first(_time) as lastsuccess by source ]| eval lastsuccess = coalesce(lastsuccess, last) | eval diff = lastloss - lastsuccess | search diff > 0 | eval my_hours=floor(diff / 60 / 60)| eval my_minutes = floor(diff / 60 - my_hours * 60) | eval my_seconds = round(diff - my_hours * 60 * 60 - my_minutes * 60, 0) | eval stime = if(my_hours==0, \"\", if(my_hours==1, my_hours + \" hour\", my_hours  + \" hours\")) + \" \" +  if(my_minutes==0, \"\", if(my_minutes==1, my_minutes + \" minute\", my_minutes + \" minutes\"))+\" \" + if(my_seconds==0, \"\", if(my_seconds==1, my_seconds + \" second\", my_seconds + \" seconds\"))   | eval event = \"Cannot reach the host for at least \" + stime | convert ctime(lastloss) ctime(lastsuccess) |rename source as title | fields title event ]| fields - _timediff loss success | eval title= substr(title ,  11 , len(title) - 10 )| eval i=\"\" | fields + i title hostname laststatus lossrate response event "   
+        preview=True cache=False status_buckets=300 %}
+
+
+    {% searchmanager id="subsearch"  search="index=pingman earliest=\"-1h\" source=\"$source$\" | eval time = coalesce(time, 0) | timechart span=5m avg(time) by splunk_server" 
+        preview=False cache=False autostart=False %}
+
+    {% searchmanager id="subsearch2"  search="index=pingman earliest=\"-1h\" source=\"$source$\" | timechart span=5m sum(eval(if(eventtype==\"pingloss\",1,0))) as loss sum(eval(if(eventtype==\"pingsuccess\",1,0))) as success | eval  lossrate = round(loss/(success+loss) * 100, 0) | fields - loss success | rename lossrate as \"lossrate(%)\"" 
+        preview=False cache=False autostart=False %}
+
+{% endblock managers %}
+
+{% block js %}    
+
+<script>
+    function hideinfo(){
+        
+        require(["splunkjs/ready!"], function(mvc) {
+            table = mvc.Components.getInstance("table1");
+            
+            table.$el.find("tr.info-box").remove();
+            table.$el.find(".count-number").parent().hide();
+        });
+    };
+    function myfunc(v){
+        
+        require(["splunkjs/ready!"], function(mvc) {
+            var target = mvc.reverse("pingman:dashboard");
+            var drilldown = {
+                // We set various query and search properties on two target managers: 'search1'
+                // and 'search2'. We use the values from the row we clicked on.
+                "title": v
+            };
+            
+            // Now we can use the drilldown helper, passing in our target URL,
+            // and our drilldown options.
+            mvc.drilldown(target, drilldown);
+        });
+    };
+</script>
+<script>
+
+require(["splunkjs/ready!"], function(mvc) {
+        
+        
+
+        var _ = require('underscore');
+        
+        var table = mvc.Components.getInstance("table1");
+        var simples = mvc.Components.getInstance("simplesearch1")
+        var simpleResultsModel = simples.data("results", {
+            count: 1
+        });
+        
+        var subsearchmgr = mvc.Components.getInstance("subsearch")
+        var subsearchmgr2 = mvc.Components.getInstance("subsearch2")
+        // Let's get a reference to it's data
+        var subsearchResultsModel = subsearchmgr.data("results", {
+            count: 1
+        });
+        var subsearchResultsModel2 = subsearchmgr2.data("results", {
+            count: 1
+        });
+
+        window.setInterval(function(){
+            simples = mvc.Components.getInstance("simplesearch1");
+            simples.startSearch();
+
+            },120000);
+        
+        var infoRow = null;
+
+
+        table.on("rendered", function() {  
+            table = mvc.Components.getInstance("table1");
+            table.$el.find('table').removeClass("table-chrome");
+            table.$el.find('th[data-sort-key="i"]').addClass("firsthead");
+            table.$el.find('th[data-sort-key="i"]').removeClass("sorts");
+            table.$el.find('th[data-sort-key="i"]').find("a").remove();
+            table.$el.find('tr.shared-resultstable-resultstablerow').each(function(){
+                $(this).find('td[data-cell-index="1"]').addClass("titlecol")
+                var v = $(this).find('td[data-cell-index="4"]').text();
+                if (v.trim()!="0%") {
+                    $(this).find('td[data-cell-index="0"]').addClass("yellow");
+                } else {
+                    $(this).find('td[data-cell-index="0"]').addClass("green");
+                }
+                v = $(this).find('td[data-cell-index="3"]').text();
+                
+                if (v.trim()=="pingloss") {
+                  
+                    $(this).find('td[data-cell-index="0"]').addClass("red")
+                    $(this).find('td[data-cell-index="3"]').addClass("icon-alert")
+                };
+
+            });
+           
+        });
+  
+
+        table.on("clicked:row", function(e) {
+            // Get the title that was clicked                    
+            var title = e.model.get("title");
+            // We need to find the row in the table that matches this title,
+            // jquery makes this a bit difficult
+            var row = table.$("tr").find("td:contains(" + title + ")")
+                .filter(function(idx, cell) {
+                    return $.trim($(cell).text()) === title;
+                }).parent();
+            // Do some HTML munging
+            var tbody = row.parent();
+            var rows = row.siblings();
+
+            
+            rows.removeClass("toggled");
+            
+            tbody.find("tr.info-box").remove();
+            
+            
+            var hostname = e.model.get("hostname");
+            var numColumns = 7;                
+            var template = ' \
+<tr class="info-box" style="width:100%"> \
+    <td class="info-td" colspan="<%= colspan %>"> \
+        <div class="loading"><img src="{{STATIC_URL}}examplesfx/spin.gif"/></div> \
+        <div class="dashboard-header clearfix"><h4>host/ip: ' + hostname + ' in last 1 hour</h4> <span class="count-number"></span>\
+        <div> \
+        <a class="btn icon-minus" onclick="javascript:hideinfo()" href="#"></a>\
+        <a class="btn" onclick="javascript:myfunc(\''+title +'\')" href="#">More detail...</a> </div>\
+        <div class="dashboard-row">\
+        <div class="dashboard-cell" style="width: 50%; ">\
+            <div class="dashboard-panel" style="margin-right: 10px;margin-top: 10px">\
+            <div class="dashboard-element">\
+                    <div class="panel-head">\
+                        <h3>Response Time (ms) by splunk_server </h3>\
+                    </div>\
+                    <div class="panel-body">\
+        <div id="subchart" class="splunk-view splunk-chart" style="" \
+        data-type="splunk-chart"\
+        data-component="view"\
+        data-require="splunkjs/mvc/chartview"\
+        data-options="{&quot;app&quot;: &quot;mercury&quot;, &quot;managerid&quot;: &quot;subsearch&quot;, &quot;type&quot;: &quot;line&quot;}"></div>\
+            </div> \
+        </div> \
+        </div> \
+        </div> \
+        <div class="dashboard-cell" style="width: 50%">\
+            <div class="dashboard-panel" style="margin-right: 10px;margin-top: 10px">\
+            <div class="dashboard-element">\
+                    <div class="panel-head">\
+                        <h3>Packet Loss Rate (%)</h3>\
+                    </div>\
+                    <div class="panel-body">\
+        <div id="subchart2" class="splunk-view splunk-chart" style="" \
+        data-type="splunk-chart"\
+        data-component="view"\
+        data-require="splunkjs/mvc/chartview"\
+        data-options="{&quot;app&quot;: &quot;mercury&quot;, &quot;managerid&quot;: &quot;subsearch&quot;, &quot;type&quot;: &quot;area&quot;}"></div>\
+        </div> \
+        </div> \
+         </div> \
+        </div> \
+        </div> \
+        </div> \
+    </td> \
+</tr> \
+';
+            row.addClass("toggled");
+            var newRow = $(_.template(template, {
+                colspan: numColumns
+            }));
+            newRow.find(".count-number").parent().hide();
+            row.after(newRow);
+            infoRow = newRow;
+           
+            // Here we set the title onto the query, and start the search
+
+            subsearchmgr.query.set("source", "pingman://" + title.trim() );
+            subsearchmgr.startSearch();
+    
+            subsearchmgr2.query.set("source", "pingman://" + title.trim() );
+            subsearchmgr2.startSearch();    
+            
+        });
+        
+
+        subsearchResultsModel2.on("data", function() { 
+            infoRow.find(".loading").hide();
+            //var collection = sourcetypeResultsModel.collection();
+            //var data = collection.at(0);
+            
+            infoRow.find(".count-number")
+                .parent().show();
+
+            var deps = [
+                "splunkjs/mvc",
+                "splunkjs/mvc/chartview",
+                "splunkjs/mvc/tableview",
+                "splunkjs/mvc/searchmanager",
+                "splunkjs/mvc/singleview"
+            ];
+
+        
+   
+            require(deps, function() {
+            
+
+            mvc.Components.revokeInstance("subchart2", {silent: true});
+            var ChartView = require("splunkjs/mvc/chartview");
+            new ChartView({
+                id: "subchart2",
+                managerid: "subsearch2",
+                el: $("#subchart2"),
+                type: "area"
+            }).render();
+             mvc.Components.getInstance("subchart2").settings.set({
+                 "charting.legend.placement" : "none" , 
+
+                });
+            
+
+        });
+
+        });
+        // Whenever the data updates, we can update the HTML     
+
+
+
+        subsearchResultsModel.on("data", function() {                
+            infoRow.find(".loading").hide();
+            //var collection = sourcetypeResultsModel.collection();
+            //var data = collection.at(0);
+            
+            infoRow.find(".count-number")
+                .parent().show();
+
+
+        
+            
+            var deps = [
+                "splunkjs/mvc",
+                "splunkjs/mvc/chartview",
+                "splunkjs/mvc/tableview",
+                "splunkjs/mvc/searchmanager",
+                "splunkjs/mvc/singleview"
+            ];
+
+        
+   
+            require(deps, function() {
+            mvc.Components.revokeInstance("subchart", {silent: true});
+            var ChartView = require("splunkjs/mvc/chartview");
+            new ChartView({
+                id: "subchart",
+                managerid: "subsearch",
+                el: $("#subchart"),
+                type: "line",
+               
+
+            }).render();
+            mvc.Components.getInstance("subchart").settings.set({
+                 "charting.legend.placement" : "top" , 
+
+                });
+            
+
+
+        });
+            
+        }); 
+
+    });
+</script>
+
+{% endblock js %}

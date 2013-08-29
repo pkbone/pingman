@@ -1,0 +1,254 @@
+{% extends "splunkdj:base_with_app_bar.html" %}
+{% load splunkmvc %}
+
+{% block title %}{{app_name}} Host Detail {% endblock title %}
+
+{% block css %}
+    <link rel="stylesheet" type="text/css" href="{{STATIC_URL}}splunkjs/css/dashboard.css">
+    <link rel="stylesheet" type="text/css" media="all" href="{{STATIC_URL}}/css/pages/dashboard-simple-bootstrap.min.css" />
+    <link rel="stylesheet" type="text/css" href="{{STATIC_URL}}{{app_name}}/custom.css" />
+     
+    <style>        
+        .container {
+            margin: 0px auto;
+            margin-top: 30px;
+            margin-bottom: 30px;
+            padding: 10px;
+            max-width: 1024px;
+            box-shadow:0 0 20px #777;
+        }    
+        .app-bar .nav-pills {
+            background-color:#56A7E7;
+            border-bottom: 0px;
+        }
+
+    </style>
+{% endblock css %}
+
+{% block content %}
+
+
+<div class="dashboard-body container-fluid main-section-body container" data-role="main">
+    <div class="dashboard-header clearfix">
+        <h2>Host Detail for {{message}}</h2>
+        <p class="description"></p>
+    </div>
+
+     <div class="fieldset hide-label" style="margin-bottom:5px;">
+    {% timepicker id="timepicker" preset="Last 24 hours" %}
+
+    </div>
+
+    <div class="dashboard-row">
+        <div class="dashboard-cell" style="width: 50%;">
+            <div class="dashboard-panel">
+                <div class="dashboard-element">
+                    <div class="panel-head">
+                        <h3>avg response time(ms)</h3>
+                    </div>
+                    <div class="panel-body">
+                        {% single id="single1" managerid="simplesearch1" %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="dashboard-cell" style="width: 50%;">
+            <div class="dashboard-panel">
+                <div class="dashboard-element">
+                    <div class="panel-head">
+                        <h3>Packet Loss Rate (%)</h3>
+                    </div>
+                    <div class="panel-body">
+                        {% single id="single2" managerid="simplesearch2" %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="dashboard-row">
+        <div class="dashboard-cell" style="width: 100%;">
+            <div class="dashboard-panel">
+                <div class="dashboard-element">
+                    <div class="panel-head">
+                        <h3>Event History</h3>
+                    </div>
+                    <div class="panel-body">
+                        {% resulttable id="table2" managerid="simplesearch3" %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+    <div class="dashboard-row">
+        <div class="dashboard-cell" style="width: 50%;">
+            <div class="dashboard-panel">
+                <div class="dashboard-element">
+                    <div class="panel-head">
+                        <h3>Response History</h3>
+                    </div>
+                    <div class="panel-body">
+                        {% chart id="chart1" managerid="simplesearch4"  type="area"  %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="dashboard-cell" style="width: 50%;">
+            <div class="dashboard-panel">
+                <div class="dashboard-element">
+                    <div class="panel-head">
+                        <h3>Average Response Time(ms) over time</h3>
+                    </div>
+                    <div class="panel-body">
+                        {% chart id="chart2" managerid="simplesearch5"  type="line" %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+
+</div>
+
+
+
+{% endblock content%}
+
+{% block managers %}
+    {% searchmanager id="simplesearch1" search="index=pingman source=\"pingman://$title$\" | stats avg(time) as Response  |eval Response = Round(Response,3) | fieldformat Response = Response  + \"ms\"" 
+      earliest_time="-4h"  preview=True cache=60  autostart=False %}
+    
+    {% searchmanager id="simplesearch2" search="index=pingman source=\"pingman://$title$\" | stats sum(eval(if(eventtype==\"pingloss\", 1, 0))) as pingloss count as total|  eval rate = if(total!=0, round(pingloss/total * 100,2), \"N/A \") | fields rate | fieldformat rate = rate + \"%\"" 
+      earliest_time="-4h"  preview=True cache=60  autostart=False %} 
+   <!-- {% searchmanager id="simplesearch2" search="index=pingman source=\"pingman://$title$\" | stats count by eventtype source | xyseries source eventtype count | eval rate = round(pingloss/(pingloss + pingsuccess) * 100,2) | fields rate | fieldformat rate = rate + \"%\"" 
+      earliest_time="-4h"  preview=True cache=60  autostart=False %} -->
+
+    {% searchmanager id="simplesearch3" search="index=pingman source=\"pingman://not_reachable\" eventtype=\"*\"| sort _time|streamstats global=f window=2 last(eventtype) as b first(eventtype) as a last(_time) as btime first(_time) as atime by splunk_server | eval statuschange=if(a==b,0,1)|  where (atime==btime and b==\"pingloss\") or statuschange ==1 | sort - _time| streamstats global=f window=2 last(_time) as start first(_time) as end by splunk_server | eval period = btime - atime | eval interval = end - start | table a b btime interval event splunk_server period  atime| eval diff=now()| eval diff = if(interval==0, diff-atime, interval) | eval my_hours=floor(diff / 60 / 60)| eval my_minutes = floor(diff / 60 - my_hours * 60) | eval my_seconds = round(diff - my_hours * 60 * 60 - my_minutes * 60, 0) | eval stime = if(my_hours==0, \"\", if(my_hours==1, my_hours + \" hour\", my_hours  + \" hours\")) + \" \" +  if(my_minutes==0, \"\", if(my_minutes==1, my_minutes + \" minute\", my_minutes + \" minutes\"))+\" \" + if(my_seconds==0, \"\", if(my_seconds==1, my_seconds + \" second\", my_seconds + \" seconds\")) | eval diff=now() - atime | eval event= \" \" + if(b==\"pingsuccess\", if(interval==0,\"host is reachable from \" + stime + \" ago.\", \"host get reachable for \" + stime), if(interval==0, \"host cannot be reached from \" + stime + \" ago.\", if(a==b, \"host cannot be reached\", \"host cannot be reached for \" + stime))) | fields - my_hours stime my_minutes my_seconds interval diff | convert ctime(atime) ctime(btime) | rename b as \"Event Type\" btime as \"Event Time\" event as \"Description\" splunk_server as \"report by\" atime as \"Related Event Time\" period as Period| fields - a" 
+      earliest_time="-4h" preview=True cache=60 autostart=False %}
+
+
+    {% searchmanager id="simplesearch4" search="index=pingman source=\"pingman://$title$\"  | timechart sum(eval(if(eventtype==\"pingloss\",0,1))) as success  sum(eval(if(eventtype==\"pingloss\",1,0))) as loss   "
+       earliest_time="-4h" preview=True cache=60  autostart=False %}
+
+    {% searchmanager id="simplesearch5" search="index=pingman source=\"pingman://$title$\"  | timechart avg(time) as \"Average Response Time(ms)\" by splunk_server" 
+       earliest_time="-4h" preview=True cache=60  autostart=False %}
+
+{% endblock managers %}
+{% block js %}
+<script>
+        
+        require(["splunkjs/ready!"], function(mvc) {
+        var queryArgs = window.location.search.substr(1) || "";
+        var params = $.deparam(queryArgs) || {};
+        
+        var title = params.title;
+
+        table = mvc.Components.getInstance("table2");
+        table.on("rendered", function() {  
+            table = mvc.Components.getInstance("table2");
+            table.$el.find('table').removeClass("table-chrome");
+            table.$el.find('th[data-sort-key="Period"]').hide(); //addClass("minimum");
+            table.$el.find('th[data-sort-key="Related Event Time"]').hide(); //addClass("minimum");
+            table.$el.find('tr.shared-resultstable-resultstablerow').each(function(){
+                var v = $(this).find('td[data-cell-index="0"]').text();
+                if (v.trim()=="pingloss") {
+                    $(this).addClass("error");
+                    $(this).find('td[data-cell-index="0"]').addClass("icon-alert");
+                } else {
+                    $(this).find('td[data-cell-index="0"]').addClass("icon-check");     
+                };
+                $(this).find('td[data-cell-index="4"]').hide();//addClass("minimum");
+                $(this).find('td[data-cell-index="5"]').hide();//addClass("minimum");
+           });
+        });
+        mvc.Components.getInstance("chart1").settings.set({
+                 "charting.chart.stackMode" : "stacked100" , 
+                });
+        mvc.Components.getInstance("chart2").settings.set({
+                 "charting.legend.placement" : "top" , 
+
+                });
+            
+        
+        var search1 = mvc.Components.getInstance("simplesearch1");
+        var search2 = mvc.Components.getInstance("simplesearch2");
+        var search3 = mvc.Components.getInstance("simplesearch3");
+        var search4 = mvc.Components.getInstance("simplesearch4");
+        var search5 = mvc.Components.getInstance("simplesearch5");
+
+        
+        // Set the values on the searches, and since we told the managers to 
+        // not autostart, we need to start them.
+        if (title) {
+            search1.query.set("title", title);
+           
+            search2.query.set("title", title);
+            search3.query.set("title", title);
+            search4.query.set("title", title);
+            search5.query.set("title", title);
+           
+        };
+
+        var timepicker1 = mvc.Components.getInstance("timepicker"); 
+        
+        timepicker1.on("change", function() {
+            search1.search.set(timepicker1.val());
+            search2.search.set(timepicker1.val());
+            search3.search.set(timepicker1.val());
+            search4.search.set(timepicker1.val());
+            search5.search.set(timepicker1.val());
+
+            search1.startSearch();
+            search2.startSearch();
+            search3.startSearch();
+            search4.startSearch();
+            search5.startSearch();
+        });
+
+        table.on("clicked:row", function(e) {
+            // Get the title that was clicked     
+
+            var eventtype = e.model.get("Event Type");               
+            var eventtime = e.model.get("Event Time");
+            var eventdesc = e.model.get("Description");
+            var reportby = e.model.get("report by")
+            var related = e.model.get("Related Event Time")
+            var period = e.model.get("Period")
+            console.log(eventtime);
+            console.log(eventdesc);
+            console.log(reportby);
+            var target = mvc.reverse("pingman:alert");
+            var drilldown = {
+                // We set various query and search properties on two target managers: 'search1'
+                // and 'search2'. We use the values from the row we clicked on.
+                "title": title,
+                "eventtype": eventtype,
+                "eventtime": eventtime,
+                "eventdesc": eventdesc,
+                "reportby" : reportby,
+                "related" : related,
+                "period"  : period,
+            };
+            
+                target = target + "?" + jQuery.param(drilldown);
+                console.log(target);
+                window.open(target, "alertdetail");
+            
+            //mvc.drilldown(target, drilldown);
+            // // We need to find the row in the table that matches this title,
+            // // jquery makes this a bit difficult
+            // var row = table.$("tr").find("td:contains(" + title + ")")
+            //     .filter(function(idx, cell) {
+            //         return $.trim($(cell).text()) === title;
+            //     }).parent();
+            // // Do some HTML munging
+            // var tbody = row.parent();
+            // var rows = row.siblings();
+        });
+
+    
+    });
+
+</script>
+{% endblock js %}

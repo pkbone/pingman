@@ -1,0 +1,98 @@
+/* Custom Icons */
+
+td.icon {
+    text-align: center;
+}
+
+td.icon i {
+    font-size: 25px;
+    text-shadow: 1px 1px #aaa;
+}
+
+td.icon .severe {
+    color: red;
+}
+
+td.icon .elevated {
+    color: orangered;
+}
+
+td.icon .low {
+    color: #006400;
+}
+
+/* Row Coloring */
+#table1 tr td{
+	font-size:18 !important;
+}
+
+#table1 tr td.green {
+    background-color: green !important;
+    width:15px !important;
+    padding-left:0px;
+    padding-right:0px;
+}
+
+#table1 tr td.yellow {
+    background-color: #ffc57a !important;
+    width:15px !important;
+        padding-left:0px;
+    padding-right:0px;
+}
+
+#table1 tr td.red {
+    background-color: red !important;
+    width:15px !important;
+        padding-left:0px;
+    padding-right:0px;
+}
+
+#table1 tr th.firsthead {
+	width:15px !important;
+	    padding-left:0px;
+    padding-right:0px;
+}
+
+
+#table1 .table td {
+    border-top: 1px solid #fff;
+    
+	line-height: 48px;
+}
+#table2 tr td {
+    background-color: #dff0d8 !important;
+    line-height: 20px;
+    font-size: 14px;
+}
+
+#table2 tr.error td {
+    background-color: #f2dede !important;
+    
+}
+#table2 tr th.minimum {
+
+            width:0px;
+
+}
+#table2 tr td.minimum {
+
+            width:0px;
+
+}
+body table tr td.titlecol {
+    font-size: 16px;
+    font-family: 'Helvetica Neue', 'Luxi Sans', 'DejaVu Sans', Tahoma, 'Hiragino Sans GB', STHeiti, 'Microsoft YaHei', Arial, sans-serif;
+    
+    font-style: normal;
+    font-variant: normal;
+    font-weight: normal;
+}
+body table tr td {
+    font-size: 12px;
+    font-family: 'Helvetica Neue', 'Luxi Sans', 'DejaVu Sans', Tahoma, 'Hiragino Sans GB', STHeiti, 'Microsoft YaHei', Arial, sans-serif;
+    
+    font-style: normal;
+    font-variant: normal;
+    font-weight: normal;
+}
+
